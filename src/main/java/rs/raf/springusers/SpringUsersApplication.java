@@ -4,12 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import rs.raf.springusers.entities.Role;
 import rs.raf.springusers.entities.User;
 import rs.raf.springusers.repository.UserRepository;
 
 @SpringBootApplication
+@EnableAsync
 public class SpringUsersApplication implements CommandLineRunner {
     @Autowired
     private UserRepository userRepository;
@@ -22,7 +24,7 @@ public class SpringUsersApplication implements CommandLineRunner {
             user.setEmail("admin@gmail.com");
             user.setFirstName("admin");
             user.setSecondName("admin");
-            user.setRole(Role.ADMIN);
+            user.setRole(Role.CAN_READ);
             user.setPassword(new BCryptPasswordEncoder().encode("admin"));
             userRepository.save(user);
         }

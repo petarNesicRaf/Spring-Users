@@ -1,6 +1,7 @@
 package rs.raf.springusers.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,17 +21,19 @@ import java.util.HashMap;
 @Service
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
-    private final UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JWTService jwtService;
+    @Autowired
+    private JWTService jwtService;
     public User signUp(SignUpRequest signUpRequest)
     {
         User user = new User();
         user.setEmail(signUpRequest.getEmail());
         user.setFirstName(signUpRequest.getFirstName());
         user.setSecondName(signUpRequest.getLastName());
-        user.setRole(Role.USER);
+        user.setRole(Role.CAN_READ);
         user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
 
         return userRepository.save(user);

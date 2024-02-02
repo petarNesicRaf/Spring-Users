@@ -3,6 +3,8 @@ package rs.raf.springusers.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -26,14 +28,22 @@ import java.beans.JavaBean;
 public class SecurityConfiguration {
     private final JWTAuthenticationFilter jwtAuthenticationFilter;
     private final UserService userService;
-
+    @Bean
+    public TaskScheduler taskScheduler() {
+        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        taskScheduler.setPoolSize(10);
+        return taskScheduler;
+    }
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request->request.requestMatchers("/api/v1/auth/**")
                         .permitAll()
-                        .requestMatchers("/api/v1/admin").hasAuthority(Role.ADMIN.name())
-                        .requestMatchers("/api/v1/user").hasAuthority(Role.USER.name())
+                        .requestMatchers("/api/v1/vacuum/**").permitAll()
+                        .requestMatchers("/api/v1/admin/get-users").hasAuthority(Role.CAN_READ.name())
+                        .requestMatchers("/api/v1/admin/*/update-user").hasAuthority(Role.CAN_UPDATE.name())
+                        .requestMatchers("/api/v1/admin/*/delete-user").hasAuthority(Role.CAN_DELETE.name())
+                        .requestMatchers("/api/v1/admin/create-user").hasAuthority(Role.CAN_CREATE.name())
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider()).addFilterBefore(
