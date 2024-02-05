@@ -2,20 +2,15 @@ package rs.raf.springusers.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import rs.raf.springusers.dto.JwtAuthResponse;
-import rs.raf.springusers.dto.RefreshTokenRequest;
-import rs.raf.springusers.dto.SignInRequest;
-import rs.raf.springusers.dto.SignUpRequest;
+import org.springframework.web.bind.annotation.*;
+import rs.raf.springusers.dto.*;
 import rs.raf.springusers.entities.User;
 import rs.raf.springusers.services.AuthenticationService;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:4200")
 public class AuthenticationController {
     private final AuthenticationService authenticationService;
 
@@ -34,4 +29,15 @@ public class AuthenticationController {
     public ResponseEntity<JwtAuthResponse> refresh(@RequestBody RefreshTokenRequest refreshTokenRequest) {
         return ResponseEntity.ok(authenticationService.refreshToken(refreshTokenRequest));
     }
+    @PostMapping("/{user_id}/update-user")
+    public ResponseEntity<User> updateUser(@PathVariable Long user_id,@RequestBody EditUserRequest sign)
+    {
+        User user = authenticationService.updateUser(user_id, sign);
+        if(user == null)
+        {
+            return  ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(user);
+    }
+
 }

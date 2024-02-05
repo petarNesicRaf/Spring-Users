@@ -1,15 +1,14 @@
 package rs.raf.springusers.services.impl;
 
+import jakarta.persistence.EntityNotFoundException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import rs.raf.springusers.dto.JwtAuthResponse;
-import rs.raf.springusers.dto.RefreshTokenRequest;
-import rs.raf.springusers.dto.SignInRequest;
-import rs.raf.springusers.dto.SignUpRequest;
+import rs.raf.springusers.dto.*;
 import rs.raf.springusers.entities.Role;
 import rs.raf.springusers.entities.User;
 import rs.raf.springusers.repository.UserRepository;
@@ -17,16 +16,22 @@ import rs.raf.springusers.services.AuthenticationService;
 import rs.raf.springusers.services.JWTService;
 
 import java.util.HashMap;
-
+@Getter
 @Service
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
     @Autowired
     private UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private  PasswordEncoder passwordEncoder;
+
     private final AuthenticationManager authenticationManager;
+
     @Autowired
     private JWTService jwtService;
+
+
     public User signUp(SignUpRequest signUpRequest)
     {
         User user = new User();
@@ -48,6 +53,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         JwtAuthResponse jwtAuthResponse = new JwtAuthResponse();
         jwtAuthResponse.setToken(jwt);
         jwtAuthResponse.setRefreshToken(refresh);
+        jwtAuthResponse.setRole(String.valueOf(user.getRole()));
+        jwtAuthResponse.setId(user.getId());
         return jwtAuthResponse;
     }
 
@@ -66,5 +73,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return jwtAuthResponse;
         }
         return null;
+    }
+
+    @Override
+    public User updateUser(Long id, EditUserRequest editUserRequest) {
+        User user = userRepository.findById(id).orElseThrow(()-> new EntityNotFoundException("User not found"));
+        user.setEmail(editUserRequest.getEmail());
+        user.setPassword(passwordEncoder.encode(editUserRequest.getPassword()));
+        user.setSecondName(editUserRequest.getLastName());
+        user.setFirstName(editUserRequest.getFirstName());
+        user.setRole(Role.valueOf(editUserRequest.getRole().toUpperCase()));
+        userRepository.save(user);
+        return user;
     }
 }

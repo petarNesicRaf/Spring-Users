@@ -13,6 +13,7 @@ import rs.raf.springusers.dto.VacuumRequest;
 import rs.raf.springusers.entities.Status;
 import rs.raf.springusers.entities.User;
 import rs.raf.springusers.entities.Vacuum;
+import rs.raf.springusers.exceptions.VacuumOperationException;
 import rs.raf.springusers.repository.UserRepository;
 import rs.raf.springusers.repository.VacuumRepository;
 import rs.raf.springusers.services.VacuumService;
@@ -21,6 +22,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +37,12 @@ public class VacuumServiceImpl implements VacuumService {
     private UserRepository  userRepository;
     @Autowired
     private TaskScheduler taskScheduler;
+
+    @Override
+    public List<Vacuum> findVacuumsByCreatedAtBetween(LocalDateTime fromDate, LocalDateTime toDate) {
+        return vacuumRepository.findByCreatedAtBetween(fromDate, toDate);
+    }
+
     @Override
     public Vacuum addVacuum(Long id,VacuumRequest vacuumRequest) {
         User user = userRepository.findById(id).orElseThrow(()-> new EntityNotFoundException("User not found"));
@@ -57,11 +65,11 @@ public class VacuumServiceImpl implements VacuumService {
     @Override
     @Transactional
     @Async
-    public CompletableFuture<Void> turnOnVacuumAsync(Long vacuumId) {
+    public CompletableFuture<Void> turnOnVacuumAsync(Long vacuumId) throws VacuumOperationException,EntityNotFoundException{
         Vacuum vacuum = vacuumRepository.findById(vacuumId).orElseThrow(()->new EntityNotFoundException("Vacuum not found"));
         if(vacuum.getStatus()!=Status.OFF)
         {
-            throw new EntityNotFoundException("The vacuum is not turned off");
+            throw new VacuumOperationException("The vacuum is not turned off");
         }
         try {
             CompletableFuture<Void> delayedFuture = new CompletableFuture<>();
@@ -83,11 +91,11 @@ public class VacuumServiceImpl implements VacuumService {
     @Override
     @Transactional
     @Async
-    public CompletableFuture<Void> turnOffVacuumAsync(Long vacuumId) {
+    public CompletableFuture<Void> turnOffVacuumAsync(Long vacuumId) throws VacuumOperationException,EntityNotFoundException{
         Vacuum vacuum = vacuumRepository.findById(vacuumId).orElseThrow(()->new EntityNotFoundException("Vacuum not found"));
         if(vacuum.getStatus()!=Status.ON)
         {
-            throw new EntityNotFoundException("The vacuum is not turned on");
+            throw new VacuumOperationException("The vacuum is not turned on");
         }
         try {
             CompletableFuture<Void> delayedFuture = new CompletableFuture<>();
@@ -98,7 +106,15 @@ public class VacuumServiceImpl implements VacuumService {
                         {
                             vacuum.setStatus(Status.OFF);
                             vacuumRepository.save(vacuum);
-                            dischargeVacuumAsync(vacuumId);
+
+
+                            try {
+                                dischargeVacuumAsync(vacuumId);
+                            } catch (VacuumOperationException e) {
+                                throw new RuntimeException("Discharge exception");
+                            }
+
+
                             vacuum.getDischargeCounter().set(0);
                             delayedFuture.complete(null);
                         }else {
@@ -117,11 +133,11 @@ public class VacuumServiceImpl implements VacuumService {
     @Override
     @Transactional
     @Async
-    public CompletableFuture<Void> dischargeVacuumAsync(Long vacuumId) {
+    public CompletableFuture<Void> dischargeVacuumAsync(Long vacuumId) throws VacuumOperationException,EntityNotFoundException {
         Vacuum vacuum = vacuumRepository.findById(vacuumId).orElseThrow(()->new EntityNotFoundException("Vacuum not found"));
         if(vacuum.getStatus()!=Status.OFF)
         {
-            throw new EntityNotFoundException("The vacuum is not turned off");
+            throw new VacuumOperationException("The vacuum is not turned off");
         }
 
         try {
@@ -148,30 +164,76 @@ public class VacuumServiceImpl implements VacuumService {
     }
 
     @Override
-    public Vacuum findById(Long vacuumId) {
+    public Vacuum findById(Long vacuumId) throws EntityNotFoundException{
         return vacuumRepository.findById(vacuumId).orElseThrow(()->new EntityNotFoundException("Vacuum not found"));
     }
     @Async
     @Transactional
     @Override
-    public void turnOnScheduled(Long id, String dateTime) {
+    public void turnOnScheduled(Long id, String dateTime) throws VacuumOperationException,EntityNotFoundException{
         Instant instant = stringToInstant(dateTime);
-        taskScheduler.schedule(()->turnOnVacuumAsync(id), instant);
+        taskScheduler.schedule(()-> {
+            try {
+                turnOnVacuumAsync(id);
+            } catch (VacuumOperationException e) {
+                throw new RuntimeException("Turn on scheduled exception");
+            }
+        }, instant);
     }
     @Async
     @Transactional
     @Override
-    public void turnOffScheduled(Long id, String dateTime) {
-        Instant instant = stringToInstant(dateTime);
-        taskScheduler.schedule(()->turnOffVacuumAsync(id), instant);
-    }
+    public void turnOffScheduled(Long id, String dateTime)  throws VacuumOperationException,EntityNotFoundException{
+
+            Instant instant = stringToInstant(dateTime);
+            taskScheduler.schedule(() -> {
+                try {
+                    turnOffVacuumAsync(id);
+                } catch (VacuumOperationException e) {
+                    throw new RuntimeException("Turn off scheduled exception");
+                }
+            }, instant);
+
+        }
+
     @Async
     @Transactional
     @Override
-    public void dischargeScheduled(Long id, String dateTime) {
+    public void dischargeScheduled(Long id, String dateTime) throws VacuumOperationException,EntityNotFoundException{
 
         Instant instant = stringToInstant(dateTime);
-        taskScheduler.schedule(()->dischargeVacuumAsync(id), instant);
+        taskScheduler.schedule(()-> {
+            try {
+                dischargeVacuumAsync(id);
+            } catch (VacuumOperationException e) {
+                throw new RuntimeException("Discharge scheduled exception");
+            }
+        }, instant);
+    }
+
+    @Override
+    public List<Vacuum> getAllVacuums(Long id) {
+        List<Vacuum> vacuums = vacuumRepository.findByUserId(id);
+        if(vacuums==null) throw new EntityNotFoundException("User has no vacuums");
+        return vacuums;
+    }
+
+    @Override
+    public void deactivateVacuum(Long id) {
+        Vacuum vacuum = vacuumRepository.findById(id).orElseThrow(()->new EntityNotFoundException("Vacuum not found"));
+        vacuum.setActive(1);
+        this.vacuumRepository.save(vacuum);
+    }
+
+    @Override
+    public List<Vacuum> searchVacuumByStatus(List<Status> status) {
+        List<Vacuum> toReturn = new ArrayList<>();
+        for (Status s:status)
+        {
+            List<Vacuum> vacuums = this.vacuumRepository.findByStatus(s);
+            toReturn.addAll(vacuums);
+        }
+        return toReturn;
     }
 
     private Instant stringToInstant(String dateTime)

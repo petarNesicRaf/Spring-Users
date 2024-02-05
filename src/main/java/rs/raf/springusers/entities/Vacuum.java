@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Data
@@ -22,4 +23,11 @@ public class Vacuum {
     @JsonBackReference
     private User user;
     private AtomicInteger dischargeCounter = new AtomicInteger(0);
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

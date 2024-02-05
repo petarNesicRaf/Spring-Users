@@ -24,7 +24,7 @@ public class SpringUsersApplication implements CommandLineRunner {
             user.setEmail("admin@gmail.com");
             user.setFirstName("admin");
             user.setSecondName("admin");
-            user.setRole(Role.CAN_READ);
+            user.setRole(Role.CAN_CREATE);
             user.setPassword(new BCryptPasswordEncoder().encode("admin"));
             userRepository.save(user);
         }

@@ -1,6 +1,7 @@
 package rs.raf.springusers.services;
 
 import org.springframework.security.core.userdetails.UserDetailsService;
+import rs.raf.springusers.dto.EditUserRequest;
 import rs.raf.springusers.dto.SignUpRequest;
 import rs.raf.springusers.entities.Role;
 import rs.raf.springusers.entities.User;
@@ -12,6 +13,6 @@ public interface UserService {
     User changeRole(Long id, Role role);
 
     List<User> getUsers();
-    User updateUser(Long id,SignUpRequest signUpRequest);
+    User updateUser(Long id, EditUserRequest editUserRequest);
     void deleteUser(Long id);
 }

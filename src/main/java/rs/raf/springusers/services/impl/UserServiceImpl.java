@@ -6,11 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import rs.raf.springusers.dto.EditUserRequest;
 import rs.raf.springusers.dto.SignUpRequest;
 import rs.raf.springusers.entities.Role;
 import rs.raf.springusers.entities.User;
 import rs.raf.springusers.repository.UserRepository;
+import rs.raf.springusers.services.AuthenticationService;
 import rs.raf.springusers.services.UserService;
 
 import java.util.List;
@@ -21,6 +24,7 @@ import java.util.Optional;
 public class UserServiceImpl implements UserService {
     @Autowired
     private  UserRepository userRepository;
+
     @Override
     public UserDetailsService userDetailsService(){
         return new UserDetailsService() {
@@ -46,12 +50,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User updateUser(Long id,SignUpRequest signUpRequest) {
+    public User updateUser(Long id, EditUserRequest editUserRequest) {
         User user = userRepository.findById(id).orElseThrow(()-> new EntityNotFoundException("User not found"));
-        user.setEmail(signUpRequest.getEmail());
-        user.setPassword(signUpRequest.getPassword());
-        user.setSecondName(signUpRequest.getLastName());
-        user.setFirstName(signUpRequest.getFirstName());
+        user.setEmail(editUserRequest.getEmail());
+
+        user.setSecondName(editUserRequest.getLastName());
+        user.setFirstName(editUserRequest.getFirstName());
+        user.setRole(Role.valueOf(editUserRequest.getRole().toUpperCase()));
         userRepository.save(user);
         return user;
     }
